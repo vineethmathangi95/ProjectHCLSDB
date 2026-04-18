@@ -10,7 +10,7 @@ pipeline {
 
         stage('Build Docker Image') {
             steps {
-                sh "docker build -t python-app:v${BUILD_NUMBER} ."
+                sh "docker build --no-cache -t python-app:v${BUILD_NUMBER} ."
             }
         }
 
