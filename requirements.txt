@@ -5,4 +5,4 @@ drf-yasg>=1.20
 Pillow>=9.0
 
 # Optional (only if you prefer PyMySQL instead of mysqlclient)
- PyMySQL>=1.0.2
+PyMySQL>=1.0.2
