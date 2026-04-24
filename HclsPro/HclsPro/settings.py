@@ -36,6 +36,11 @@ ALLOWED_HOSTS = os.environ.get(
     "*"
 ).split(",")
 
+CSRF_TRUSTED_ORIGINS = os.environ.get(
+    "CSRF_TRUSTED_ORIGINS",
+    "https://hms.example4.xyz"
+).split(",")
+
 # Application definition
 
 INSTALLED_APPS = [
