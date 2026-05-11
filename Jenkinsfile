@@ -42,7 +42,8 @@ pipeline {
 
     environment {
         AWS_REGION = "us-east-1"
-        ECR_REPO = "240029899648.dkr.ecr.us-east-1.amazonaws.com/python"
+        ECR_REGISTRY = "240029899648.dkr.ecr.us-east-1.amazonaws.com"
+        ECR_REPOSITORY = "python"
         IMAGE_NAME = "python-app"
     }
 
@@ -53,31 +54,63 @@ pipeline {
 
     stages {
 
-        stage('Build Docker Image') {
+        stage('Checkout Code') {
             steps {
-                sh "docker build --no-cache -t ${IMAGE_NAME}:v${BUILD_NUMBER} ."
+                checkout scm
             }
         }
 
-        stage('Login to ECR') {
+        stage('Build Docker Image') {
             steps {
                 sh """
-                aws ecr get-login-password --region ${AWS_REGION} | \
-                docker login --username AWS --password-stdin ${ECR_REPO}
+                docker build --no-cache -t ${IMAGE_NAME}:v${BUILD_NUMBER} .
                 """
             }
         }
 
-        stage('Tag Image for ECR') {
+        stage('Login to AWS ECR') {
             steps {
-                sh "docker tag ${IMAGE_NAME}:v${BUILD_NUMBER} ${ECR_REPO}:hms-v${BUILD_NUMBER}"
+                withCredentials([
+                    string(credentialsId: 'aws-access-key', variable: 'AWS_ACCESS_KEY_ID'),
+                    string(credentialsId: 'aws-secret-key', variable: 'AWS_SECRET_ACCESS_KEY')
+                ]) {
+                    sh """
+                    export AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
+                    export AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
+                    export AWS_DEFAULT_REGION=${AWS_REGION}
+
+                    aws ecr get-login-password --region ${AWS_REGION} | \
+                    docker login --username AWS --password-stdin ${ECR_REGISTRY}
+                    """
+                }
+            }
+        }
+
+        stage('Tag Image') {
+            steps {
+                sh """
+                docker tag ${IMAGE_NAME}:v${BUILD_NUMBER} \
+                ${ECR_REGISTRY}/${ECR_REPOSITORY}:hms-v${BUILD_NUMBER}
+                """
             }
         }
 
         stage('Push Image to ECR') {
             steps {
-                sh "docker push ${ECR_REPO}:hms-v${BUILD_NUMBER}"
+                sh """
+                docker push ${ECR_REGISTRY}/${ECR_REPOSITORY}:hms-v${BUILD_NUMBER}
+                """
             }
+        }
+    }
+
+    post {
+        success {
+            echo "✅ Image successfully pushed to ECR!"
+        }
+
+        failure {
+            echo "❌ Pipeline failed. Check logs."
         }
     }
 }
